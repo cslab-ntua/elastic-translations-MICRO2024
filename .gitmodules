@@ -1,0 +1,28 @@
+[submodule "gperftools"]
+	path = src/et-gperftools
+	url = https://github.com/cslab-ntua/et-gperftools.git
+	branch = et-micro-artifact
+[submodule "linux"]
+	path = src/et-linux
+	url = https://github.com/cslab-ntua/et-linux.git
+	branch = et-micro-artifact
+[submodule "pagemap-rs"]
+	path = src/et-pagemap-rs
+	url = https://github.com/cslab-ntua/et-pagemap-rs.git
+	branch = et-micro-artifact
+[submodule "qemu"]
+	path = src/et-qemu
+	url = https://github.com/cslab-ntua/et-qemu.git
+	branch = et-micro-artifact
+[submodule "trident-linux"]
+	path = src/trident-linux
+	url = https://github.com/cslab-ntua/trident-linux.git
+	branch = et-micro-artifact
+[submodule "linux-mthp"]
+	path = src/linux-mthp
+	url = https://github.com/cslab-ntua/linux-mthp.git
+	branch = et-micro-artifact
+[submodule "etutils-rs"]
+	path = src/etutils-rs
+	url = https://github.com/cslab-ntua/etutils-rs.git
+	branch = et-micro-artifact

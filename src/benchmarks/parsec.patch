@@ -1,0 +1,726 @@
+commit 91daaf0eff73d3f1ea98f5507074e00bee7d52b7
+Author: Stratos Psomadakis <774566+psomas@users.noreply.github.com>
+Date:   Wed Jul 31 18:26:02 2024 +0300
+
+    tcrperf
+
+diff --git a/pkgs/kernels/canneal/src/main.cpp b/pkgs/kernels/canneal/src/main.cpp
+index c2af5cf5..9cb30962 100644
+--- a/pkgs/kernels/canneal/src/main.cpp
++++ b/pkgs/kernels/canneal/src/main.cpp
+@@ -47,6 +47,8 @@
+ #include "netlist.h"
+ #include "rng.h"
+ 
++#include "tcrperf.h"
++
+ using namespace std;
+ 
+ void* entry_pt(void*);
+@@ -65,6 +67,9 @@ int main (int argc, char * const argv[]) {
+ 	__parsec_bench_begin(__parsec_canneal);
+ #endif
+ 
++	tcrperf_init();
++	tcrperf_start();
++
+ 	srandom(3);
+ 
+ 	if(argc != 5 && argc != 6) {
+@@ -127,11 +132,18 @@ int main (int argc, char * const argv[]) {
+ 	
+ 	cout << "Final routing is: " << my_netlist.total_routing_cost() << endl;
+ 
++	tcrperf_stop("canneal", 1);
++
++	char *pgcvar = getenv("PGC");
++	if (pgcvar) {
++		system("pagecollect $(pgrep canneal)");
++	}
++
++	return 0;
++
+ #ifdef ENABLE_PARSEC_HOOKS
+ 	__parsec_bench_end();
+ #endif
+-
+-	return 0;
+ }
+ 
+ void* entry_pt(void* data)
+diff --git a/pkgs/kernels/canneal/src/tcrperf.h b/pkgs/kernels/canneal/src/tcrperf.h
+new file mode 100644
+index 00000000..bbe9ab11
+--- /dev/null
++++ b/pkgs/kernels/canneal/src/tcrperf.h
+@@ -0,0 +1,169 @@
++#ifndef _TCRPERF_H
++#define _TCRPERF_H
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdint.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <linux/perf_event.h>
++#include <asm/unistd.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <signal.h>
++
++#define PERF_PMU_TYPE 8
++
++#define PERF_CPU_CYCLES 0x0011
++#define PERF_INSTRUCTIONS 0x0008
++#define PERF_L1DTLB 0x0025
++#define PERF_L1ITLB 0x0026
++#define PERF_L2DTLB_REFILL 0x002D
++#define PERF_L2DTLB 0x002F
++#define PERF_DTLB_WALK 0x0034
++#define PERF_ITLB_WALK 0x0035
++
++#define NR_HEADERS 3
++#define NR_EVENTS 8
++
++static const char *tcrperf_events[] = {
++	"cycles",
++	"instructions",
++	"l1dtlb",
++	"l1itlb",
++//	"l2dtlb_refill",
++	"l2dtlb",
++	"dtlb_walk",
++//	"itlb_walk",
++	"faults",
++	"time",
++};
++
++static int tcrperf_fd = -1;
++
++void done(int signum) {
++	return;
++}
++
++static inline int perf_event_open(struct perf_event_attr *hw_event, pid_t pid, 
++		int cpu, int group_fd, unsigned long flags) {
++	long ret;
++	ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
++	if (ret == -1) {
++		fprintf(stderr, "Error opening perf event %llx\n", hw_event->config);
++		exit(EXIT_FAILURE);
++	}
++	return (int)ret;
++}
++
++static inline void tcrperf_init(void) {
++	struct perf_event_attr pe;
++
++	if (!getenv("TCRPERF")) {
++		return;
++	}
++
++	memset(&pe, 0, sizeof(pe));
++
++	pe.type = PERF_TYPE_RAW;
++	pe.size = sizeof(pe);	
++	pe.config = PERF_CPU_CYCLES;
++	pe.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
++		PERF_FORMAT_TOTAL_TIME_RUNNING;
++	pe.disabled = 1;
++	pe.pinned = 1;
++	pe.exclusive = 1;
++	pe.inherit = 1;
++
++	tcrperf_fd = perf_event_open(&pe, 0, -1, -1, 0);
++
++	pe.disabled = 0;
++	pe.pinned = 0;
++	pe.exclusive = 0;
++
++	pe.config = PERF_INSTRUCTIONS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1ITLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L2DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_DTLB_WALK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_L2DTLB_REFILL;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_ITLB_WALK;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_PAGE_FAULTS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_TASK_CLOCK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++}
++
++static inline void tcrperf_start(void) {
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_RESET, 0);
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_ENABLE, 0);
++}
++
++static inline void tcrperf_stop(const char *msg, int pgc) {
++	uint64_t res[NR_EVENTS + NR_HEADERS], i;
++
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_DISABLE, 0);
++
++	if (read(tcrperf_fd, &res, sizeof(res)) == -1) {
++		perror("read");
++		exit(EXIT_FAILURE);
++	}
++
++	if (res[0] != NR_EVENTS) {
++		fprintf(stderr, "nr events mismatch %ld\n", res[0]);
++	}
++
++	if (res[1] != res[2]) {
++		fprintf(stderr, "multiplexing detected, enabled: %ld vs running: %ld\n",
++				res[1], res[2]);
++	}
++
++	printf("%s\n", msg);
++	for (i = 0; i < NR_EVENTS; i++) {
++		printf("%s:%ld\n", tcrperf_events[i], res[NR_HEADERS + i]);
++	}
++
++	fflush(stdout);
++
++	if (pgc) {
++#if 0
++		char *pgcvar = getenv("PGC");
++		if (pgcvar) {
++			system("pagecollect $(pgrep hashjoin)");
++		}
++#endif
++		uint8_t c = 0xff;
++		int fd = open("/dev/shm/canneal", O_WRONLY);
++		if (fd < 0) {
++			fprintf(stderr, "cannot open trigger\n");
++		}
++		if (write(fd, &c, 1) != 1) {
++			fprintf(stderr, "cannot write to trigger\n");
++		}
++		close(fd);
++		signal(SIGUSR1, done);
++		pause();
++	}
++}
++#endif /* _TCRPERF_H */
+diff --git a/pkgs/kernels/dedup/src/Makefile b/pkgs/kernels/dedup/src/Makefile
+index 37bac70a..25a16895 100644
+--- a/pkgs/kernels/dedup/src/Makefile
++++ b/pkgs/kernels/dedup/src/Makefile
+@@ -17,12 +17,12 @@ LIBS += -lm
+ DEDUP_OBJ = hashtable.o util.o dedup.o rabin.o encoder.o decoder.o mbuffer.o sha.o
+ 
+ # Uncomment the following to enable gzip compression
+-CFLAGS += -DENABLE_GZIP_COMPRESSION
++CFLAGS += -DENABLE_GZIP_COMPRESSION -DENABLE_STATISTICS
+ LIBS += -lz
+ 
+ # Uncomment the following to enable bzip2 compression
+-#CFLAGS += -DENABLE_BZIP2_COMPRESSION
+-#LIBS += -lbz2
++CFLAGS += -DENABLE_BZIP2_COMPRESSION
++LIBS += -lbz2
+ 
+ ifdef version
+   ifeq "$(version)" "pthreads"
+diff --git a/pkgs/kernels/dedup/src/decoder.c b/pkgs/kernels/dedup/src/decoder.c
+index 3bf7835c..0733804c 100644
+--- a/pkgs/kernels/dedup/src/decoder.c
++++ b/pkgs/kernels/dedup/src/decoder.c
+@@ -33,7 +33,7 @@
+ #include <hooks.h>
+ #endif //ENABLE_PARSEC_HOOKS
+ 
+-
++#include "tcrperf.h"
+ 
+ //The configuration block defined in main
+ extern config_t * conf;
+@@ -178,6 +178,9 @@ void Decode(config_t * _conf) {
+ 
+   conf = _conf;
+ 
++  tcrperf_init();
++  tcrperf_start();
++
+   //Create chunk cache
+   cache = hashtable_create(65536, hash_from_key_fn, keys_equal_fn, FALSE);
+   if(cache == NULL) {
+@@ -206,10 +209,13 @@ void Decode(config_t * _conf) {
+     exit(1);
+   }
+ 
++  tcrperf_stop("dedup-init", 0);
++
+ #ifdef ENABLE_PARSEC_HOOKS
+     __parsec_roi_begin();
+ #endif
+ 
++  tcrperf_start();
+   while(TRUE) {
+     //chunks are 'consumed' if they are added to the hash table
+     //only duplicate chunks can get reused, malloc a new one otherwise
+@@ -248,6 +254,7 @@ void Decode(config_t * _conf) {
+       EXIT_TRACE("error writing to output file");
+     }
+   }
++  tcrperf_stop("dedup-compute", 1);
+ 
+ #ifdef ENABLE_PARSEC_HOOKS
+     __parsec_roi_end();
+diff --git a/pkgs/kernels/dedup/src/encoder.c b/pkgs/kernels/dedup/src/encoder.c
+index afa84b51..9d154866 100644
+--- a/pkgs/kernels/dedup/src/encoder.c
++++ b/pkgs/kernels/dedup/src/encoder.c
+@@ -57,10 +57,10 @@
+ #include <hooks.h>
+ #endif //ENABLE_PARSEC_HOOKS
+ 
++#include "tcrperf.h"
+ 
+ #define INITIAL_SEARCH_TREE_SIZE 4096
+ 
+-
+ //The configuration block defined in main
+ extern config_t * conf;
+ 
+@@ -1353,6 +1353,9 @@ void Encode(config_t * _conf) {
+ 
+   conf = _conf;
+ 
++	tcrperf_init();
++	tcrperf_start();
++
+ #ifdef ENABLE_STATISTICS
+   init_stats(&stats);
+ #endif
+@@ -1471,10 +1474,14 @@ void Encode(config_t * _conf) {
+   data_process_args.nqueues = nqueues;
+   data_process_args.fd = fd;
+ 
++  tcrperf_stop("dedup-init", 0);
++
+ #ifdef ENABLE_PARSEC_HOOKS
+     __parsec_roi_begin();
+ #endif
+ 
++	tcrperf_start();
++
+   //thread for first pipeline stage (input)
+   pthread_create(&threads_process, NULL, Fragment, &data_process_args);
+ 
+@@ -1520,6 +1527,8 @@ void Encode(config_t * _conf) {
+     pthread_join(threads_compress[i], (void **)&threads_compress_rv[i]);
+   pthread_join(threads_send, NULL);
+ 
++	tcrperf_stop("dedup-compute", 1);
++
+ #ifdef ENABLE_PARSEC_HOOKS
+   __parsec_roi_end();
+ #endif
+diff --git a/pkgs/kernels/dedup/src/tcrperf.h b/pkgs/kernels/dedup/src/tcrperf.h
+new file mode 100644
+index 00000000..e878775d
+--- /dev/null
++++ b/pkgs/kernels/dedup/src/tcrperf.h
+@@ -0,0 +1,169 @@
++#ifndef _TCRPERF_H
++#define _TCRPERF_H
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdint.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <linux/perf_event.h>
++#include <asm/unistd.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <signal.h>
++
++#define PERF_PMU_TYPE 8
++
++#define PERF_CPU_CYCLES 0x0011
++#define PERF_INSTRUCTIONS 0x0008
++#define PERF_L1DTLB 0x0025
++#define PERF_L1ITLB 0x0026
++#define PERF_L2DTLB_REFILL 0x002D
++#define PERF_L2DTLB 0x002F
++#define PERF_DTLB_WALK 0x0034
++#define PERF_ITLB_WALK 0x0035
++
++#define NR_HEADERS 3
++#define NR_EVENTS 8
++
++static const char *tcrperf_events[] = {
++	"cycles",
++	"instructions",
++	"l1dtlb",
++	"l1itlb",
++//	"l2dtlb_refill",
++	"l2dtlb",
++	"dtlb_walk",
++//	"itlb_walk",
++	"faults",
++	"time",
++};
++
++static int tcrperf_fd = -1;
++
++static void done(int signum) {
++	return;
++}
++
++static inline int perf_event_open(struct perf_event_attr *hw_event, pid_t pid, 
++		int cpu, int group_fd, unsigned long flags) {
++	long ret;
++	ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
++	if (ret == -1) {
++		fprintf(stderr, "Error opening perf event %llx\n", hw_event->config);
++		exit(EXIT_FAILURE);
++	}
++	return (int)ret;
++}
++
++static inline void tcrperf_init(void) {
++	struct perf_event_attr pe;
++
++	if (!getenv("TCRPERF")) {
++		return;
++	}
++
++	memset(&pe, 0, sizeof(pe));
++
++	pe.type = PERF_TYPE_RAW;
++	pe.size = sizeof(pe);	
++	pe.config = PERF_CPU_CYCLES;
++	pe.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
++		PERF_FORMAT_TOTAL_TIME_RUNNING;
++	pe.disabled = 1;
++	pe.pinned = 1;
++	pe.exclusive = 1;
++	pe.inherit = 1;
++
++	tcrperf_fd = perf_event_open(&pe, 0, -1, -1, 0);
++
++	pe.disabled = 0;
++	pe.pinned = 0;
++	pe.exclusive = 0;
++
++	pe.config = PERF_INSTRUCTIONS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1ITLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L2DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_DTLB_WALK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_L2DTLB_REFILL;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_ITLB_WALK;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_PAGE_FAULTS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_TASK_CLOCK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++}
++
++static inline void tcrperf_start(void) {
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_RESET, 0);
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_ENABLE, 0);
++}
++
++static inline void tcrperf_stop(const char *msg, int pgc) {
++	uint64_t res[NR_EVENTS + NR_HEADERS], i;
++
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_DISABLE, 0);
++
++	if (read(tcrperf_fd, &res, sizeof(res)) == -1) {
++		perror("read");
++		exit(EXIT_FAILURE);
++	}
++
++	if (res[0] != NR_EVENTS) {
++		fprintf(stderr, "nr events mismatch %ld\n", res[0]);
++	}
++
++	if (res[1] != res[2]) {
++		fprintf(stderr, "multiplexing detected, enabled: %ld vs running: %ld\n",
++				res[1], res[2]);
++	}
++
++	printf("%s\n", msg);
++	for (i = 0; i < NR_EVENTS; i++) {
++		printf("%s:%ld\n", tcrperf_events[i], res[NR_HEADERS + i]);
++	}
++
++	fflush(stdout);
++
++	if (pgc) {
++#if 0
++		char *pgcvar = getenv("PGC");
++		if (pgcvar) {
++			system("pagecollect $(pgrep hashjoin)");
++		}
++#endif
++		uint8_t c = 0xff;
++		int fd = open("/dev/shm/dedup", O_WRONLY);
++		if (fd < 0) {
++			fprintf(stderr, "cannot open trigger\n");
++		}
++		if (write(fd, &c, 1) != 1) {
++			fprintf(stderr, "cannot write to trigger\n");
++		}
++		close(fd);
++		signal(SIGUSR1, done);
++		pause();
++	}
++}
++#endif /* _TCRPERF_H */
+diff --git a/pkgs/kernels/streamcluster/src/streamcluster.cpp b/pkgs/kernels/streamcluster/src/streamcluster.cpp
+index 29ff344e..12f9104b 100644
+--- a/pkgs/kernels/streamcluster/src/streamcluster.cpp
++++ b/pkgs/kernels/streamcluster/src/streamcluster.cpp
+@@ -36,6 +36,8 @@ using namespace tbb;
+ #include <hooks.h>
+ #endif
+ 
++#include "tcrperf.h"
++
+ using namespace std;
+ 
+ #define MAXNAMESIZE 1024 // max filename length
+@@ -2006,6 +2008,8 @@ int main(int argc, char **argv)
+   strcpy(outfilename, argv[8]);
+   nproc = atoi(argv[9]);
+ 
++  tcrperf_init();
++  tcrperf_start();
+ 
+ #ifdef TBB_VERSION
+   fprintf(stderr,"TBB version. Number of divisions: %d\n",NUM_DIVISIONS);
+@@ -2033,6 +2037,13 @@ int main(int argc, char **argv)
+   __parsec_roi_end();
+ #endif
+ 
++	char *pgcvar = getenv("PGC");
++	if (pgcvar) {
++		system("pagecollect $(pgrep streamcluster)");
++	}
++
++  tcrperf_stop("streamcluster", 1);
++
+   delete stream;
+ 
+ #ifdef ENABLE_PARSEC_HOOKS
+diff --git a/pkgs/kernels/streamcluster/src/tcrperf.h b/pkgs/kernels/streamcluster/src/tcrperf.h
+new file mode 100644
+index 00000000..8b53725d
+--- /dev/null
++++ b/pkgs/kernels/streamcluster/src/tcrperf.h
+@@ -0,0 +1,169 @@
++#ifndef _TCRPERF_H
++#define _TCRPERF_H
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdint.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <linux/perf_event.h>
++#include <asm/unistd.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <signal.h>
++
++#define PERF_PMU_TYPE 8
++
++#define PERF_CPU_CYCLES 0x0011
++#define PERF_INSTRUCTIONS 0x0008
++#define PERF_L1DTLB 0x0025
++#define PERF_L1ITLB 0x0026
++#define PERF_L2DTLB_REFILL 0x002D
++#define PERF_L2DTLB 0x002F
++#define PERF_DTLB_WALK 0x0034
++#define PERF_ITLB_WALK 0x0035
++
++#define NR_HEADERS 3
++#define NR_EVENTS 8
++
++static const char *tcrperf_events[] = {
++	"cycles",
++	"instructions",
++	"l1dtlb",
++	"l1itlb",
++//	"l2dtlb_refill",
++	"l2dtlb",
++	"dtlb_walk",
++//	"itlb_walk",
++	"faults",
++	"time",
++};
++
++static int tcrperf_fd = -1;
++
++void done(int signum) {
++	return;
++}
++
++static inline int perf_event_open(struct perf_event_attr *hw_event, pid_t pid, 
++		int cpu, int group_fd, unsigned long flags) {
++	long ret;
++	ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
++	if (ret == -1) {
++		fprintf(stderr, "Error opening perf event %llx\n", hw_event->config);
++		exit(EXIT_FAILURE);
++	}
++	return (int)ret;
++}
++
++static inline void tcrperf_init(void) {
++	struct perf_event_attr pe;
++
++	if (!getenv("TCRPERF")) {
++		return;
++	}
++
++	memset(&pe, 0, sizeof(pe));
++
++	pe.type = PERF_TYPE_RAW;
++	pe.size = sizeof(pe);	
++	pe.config = PERF_CPU_CYCLES;
++	pe.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
++		PERF_FORMAT_TOTAL_TIME_RUNNING;
++	pe.disabled = 1;
++	pe.pinned = 1;
++	pe.exclusive = 1;
++	pe.inherit = 1;
++
++	tcrperf_fd = perf_event_open(&pe, 0, -1, -1, 0);
++
++	pe.disabled = 0;
++	pe.pinned = 0;
++	pe.exclusive = 0;
++
++	pe.config = PERF_INSTRUCTIONS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L1ITLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_L2DTLB;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++	pe.config = PERF_DTLB_WALK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_L2DTLB_REFILL;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++//	pe.config = PERF_ITLB_WALK;
++//	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_PAGE_FAULTS;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++
++	pe.type = PERF_TYPE_SOFTWARE;
++	pe.config = PERF_COUNT_SW_TASK_CLOCK;
++	perf_event_open(&pe, 0, -1, tcrperf_fd, 0);
++}
++
++static inline void tcrperf_start(void) {
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_RESET, 0);
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_ENABLE, 0);
++}
++
++static inline void tcrperf_stop(const char *msg, int pgc) {
++	uint64_t res[NR_EVENTS + NR_HEADERS], i;
++
++	if (tcrperf_fd == -1) {
++		return;
++	}
++
++	ioctl(tcrperf_fd, PERF_EVENT_IOC_DISABLE, 0);
++
++	if (read(tcrperf_fd, &res, sizeof(res)) == -1) {
++		perror("read");
++		exit(EXIT_FAILURE);
++	}
++
++	if (res[0] != NR_EVENTS) {
++		fprintf(stderr, "nr events mismatch %ld\n", res[0]);
++	}
++
++	if (res[1] != res[2]) {
++		fprintf(stderr, "multiplexing detected, enabled: %ld vs running: %ld\n",
++				res[1], res[2]);
++	}
++
++	printf("%s\n", msg);
++	for (i = 0; i < NR_EVENTS; i++) {
++		printf("%s:%ld\n", tcrperf_events[i], res[NR_HEADERS + i]);
++	}
++
++	fflush(stdout);
++
++	if (pgc) {
++#if 0
++		char *pgcvar = getenv("PGC");
++		if (pgcvar) {
++			system("pagecollect $(pgrep hashjoin)");
++		}
++#endif
++		uint8_t c = 0xff;
++		int fd = open("/dev/shm/streamcluster", O_WRONLY);
++		if (fd < 0) {
++			fprintf(stderr, "cannot open trigger\n");
++		}
++		if (write(fd, &c, 1) != 1) {
++			fprintf(stderr, "cannot write to trigger\n");
++		}
++		close(fd);
++		signal(SIGUSR1, done);
++		pause();
++	}
++}
++#endif /* _TCRPERF_H */
