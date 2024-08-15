@@ -1,6 +1,8 @@
 Elastic Translations MICRO'24 Artifact
 ======================================
 
+[![DOI](https://zenodo.org/badge/836329268.svg)](https://zenodo.org/doi/10.5281/zenodo.13327363)
+
 This repository contains scripts and other supplementary material for the artifact evaluation of the paper 
 **Elastic Translations: Fast virtual memory with multiple translation sizes** (link TBD)
 
