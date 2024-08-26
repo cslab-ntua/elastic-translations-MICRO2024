@@ -106,7 +106,7 @@ especially in the case TLB size differs.
     newly-developed code) and other free software and open source
     licenses used by projects included in the artifact
 
--   **Archived (provide DOI)?:** TBD
+-   **Archived (provide DOI)?:** [10.5281/zenodo.13327364](https://zenodo.org/doi/10.5281/zenodo.13327363)
 
 ## Description
 
@@ -137,6 +137,9 @@ console, using the credentials ubunut / ubuntu, or by SSHing to the VM:
 	# ssh -p65433 ubuntu@localhost
 
 using the same credentials.
+
+You can also use the `run-vm-noefi.sh` script, for booting pre-built VM kernels
+directly from the host, without booting to GRUB.
 
 ### Hardware dependencies
 
@@ -179,8 +182,8 @@ exporting it to the desired path, i.e.:
 Then, inside the cloned parent repository run:
 
     # ./scripts/prepare.sh
-    # VM=1 KERNEL="et" ./scripts/build.sh
-    # VM=1 KERNEL="et" ./scripts/install.sh
+    # VM=1 KERNEL="et.full" ./scripts/build.sh
+    # VM=1 KERNEL="et.full" ./scripts/install.sh
     # reboot
 
 After installing and booting the desired kernel, one can configure and
