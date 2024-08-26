@@ -1,4 +1,6 @@
 export WGET="wget -q -O-"
+export FILE_HOST="83.212.99.29"
+
 export BASE="${BASE:-/root/elastic-translations-MICRO2024}"
 source "${BASE}/env/base.env"
 pushd "${BASE}"

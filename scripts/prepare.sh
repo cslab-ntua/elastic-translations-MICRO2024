@@ -25,8 +25,9 @@ install_rust() {
 	if [ ! -d "./bin/rust-1.80.0-aarch64-unknown-linux-gnu" ]; then
 		ok "Downloading Rust..."
 		${WGET} https://static.rust-lang.org/dist/rust-1.80.0-aarch64-unknown-linux-gnu.tar.xz | tar -C "./bin" --xz -xf -
-		./bin/rust-1.80.0-aarch64-unknown-linux-gnu/install.sh
 	fi
+	./bin/rust-1.80.0-aarch64-unknown-linux-gnu/install.sh --prefix=./bin
+
 }
 
 prepare_files() {

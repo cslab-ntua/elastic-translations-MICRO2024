@@ -126,7 +126,17 @@ phase. *scripts/install_vm_bundle.sh* will download the artifact bundle
 compressed tarball which includes a VM (QCOW2) image (*artifact.img*),
 under *artifact_vm_bundle*, with the latest version of the artifact
 already checked-out. It also includes a run script (*run-vm.sh*), which
-you can use to spawn a QEMU VM.
+you can use to spawn a QEMU VM. Insid the `artifact-vm-bundle` directory in the
+root repo, run:
+
+	# bash run-vm.sh
+
+This should spawn the QEMU VM. You can then access it either via the QEMU
+console, using the credentials ubunut / ubuntu, or by SSHing to the VM:
+	
+	# ssh -p65433 ubuntu@localhost
+
+using the same credentials.
 
 ### Hardware dependencies
 
@@ -160,11 +170,17 @@ building and running the artifact in *scripts/prepare.sh*.
 
 ## Installation
 
-Inside the cloned parent repository run:
+The artifact scripts use the `$BASE` environmental variable for the base / root
+artifact repo. It can be set either by directly editing the scripts or by
+exporting it to the desired path, i.e.:
+
+	# export BASE="/root/elastic-translations-MICRO24-artifact"
+
+Then, inside the cloned parent repository run:
 
     # ./scripts/prepare.sh
-    # VM=1 KERNEL=".et.full" ./scripts/build.sh
-    # VM=1 KERNEL=".et.full" ./scripts/install.sh
+    # VM=1 KERNEL="et" ./scripts/build.sh
+    # VM=1 KERNEL="et" ./scripts/install.sh
     # reboot
 
 After installing and booting the desired kernel, one can configure and
