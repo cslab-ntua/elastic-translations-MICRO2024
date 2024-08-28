@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # 
 # Setup the environment for the ET artifact
 

@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # 
 # Build the various components needed for the ET artifact
 

@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # 
 # Plot the results to generate the paper figures
 

@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # 
 # Download and unpack the VM bundle
 

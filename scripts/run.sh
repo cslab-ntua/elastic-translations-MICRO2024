@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # 
 # Run ET to reproduce the paper results
 
