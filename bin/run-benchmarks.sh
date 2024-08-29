@@ -256,11 +256,6 @@ case "${PGSZ}" in
 		;;
 esac
 
-if [[ -n ${glibcszkb} && -z ${MALLOC} ]]; then
-	export GLIBC_TUNABLES=glibc.malloc.hugetlb=$(( ${glibcszkb} << 10 ))
-	ok "Setting GLIBC_TUNABLES=${GLIBC_TUNABLES}..."
-fi
-
 if [[ ${TYPE} == "host" && "${MODE}" != "trident" ]]; then
 	[ ${nr_hptec} -eq 0 ] && check "echo ${nr_hptec} > ${NODE_SYSFS}/hugepages/hugepages-${hptecszkb}kB/nr_hugepages" "Reserving ${nr_hptec} contig-pte pages..."
 	[ ${nr_hpmd} -eq 0 ] && check "echo ${nr_hpmd} > ${NODE_SYSFS}/hugepages/hugepages-${hpmdszkb}kB/nr_hugepages" "Reserving ${nr_hpmd} hpmd pages..."
@@ -273,33 +268,39 @@ if [[ ${TYPE} == "host" && "${MODE}" != "trident" ]]; then
 	[ ${pgszkb} -eq 4 -a ${nr_hpud} -gt 0 ] && check "echo ${nr_hpud} > ${NODE_SYSFS}/hugepages/hugepages-${hpudszkb}kB/nr_hugepages" "Reserving ${nr_hpud} hpud pages..."
 fi
 
-[ ! -z ${MALLOC} ] && export SUFFIX="${SUFFIX}.${MALLOC}"
+if [[ -n ${glibcszkb} && -z ${MALLOC} ]]; then
+	export _GLIBC_TUNABLES=glibc.malloc.hugetlb=$(( ${glibcszkb} << 10 ))
+	ok "Setting GLIBC_TUNABLES=${_GLIBC_TUNABLES}..."
+fi
+
 # FIXME: we only use tcmalloc-norelease atm
 case "${MALLOC}" in
 	"jemalloc")
-		export LD_PRELOAD="${BASE}/lib/jemalloc.so:${LD_PRELOAD}"
+		export _LD_PRELOAD="${BASE}/lib/jemalloc.so:${LD_PRELOAD}"
 		;;
 	"tcmalloc")
-		export LD_PRELOAD="${BASE}/lib/libtcmalloc_minimal.so:${LD_PRELOAD}"
+		export _LD_PRELOAD="${BASE}/lib/libtcmalloc_minimal.so:${LD_PRELOAD}"
 		unset TCMALLOC_NORELEASE
 		source ${BASE}/env/tcmalloc.env
 		;;
 	"tcmalloc-norelease")
-		export LD_PRELOAD="${BASE}/lib/libtcmalloc_minimal.so:${LD_PRELOAD}"
+		export _LD_PRELOAD="${BASE}/lib/libtcmalloc_minimal.so:${LD_PRELOAD}"
 		export TCMALLOC_NORELEASE=1
 		source ${BASE}/env/tcmalloc.env
 		;;
 	"temeraire")
-		export LD_PRELOAD="${BASE}/lib/temeraire.so:${LD_PRELOAD}"
+		export _LD_PRELOAD="${BASE}/lib/temeraire.so:${LD_PRELOAD}"
 		;;
 	"tcmalloc-gperf")
-		export LD_PRELOAD="${BASE}/lib/tcmalloc-gperf.so:${LD_PRELOAD}"
+		export _LD_PRELOAD="${BASE}/lib/tcmalloc-gperf.so:${LD_PRELOAD}"
 		;;
 	*)
+		unset _LD_PRELOAD
 		unset LD_PRELOAD
 esac
 
-[ ! -z ${LD_PRELOAD} ] && ok "Preloading ${LD_PRELOAD}..."
+[ ! -z ${MALLOC} ] && export SUFFIX="${SUFFIX}.${MALLOC}"
+[ ! -z ${_LD_PRELOAD} ] && ok "Preloading ${_LD_PRELOAD}..."
 [ ! -z ${SUFFIX} ] && ok "Setting SUFFIX=${SUFFIX}..."
 
 [ -z ${PERF_EVENTS} ] && PERF_EVENTS="cycles,page-faults,dtlb_walk,l2d_tlb,itlb_walk,task-clock"
@@ -559,6 +560,7 @@ run() {
 	#	unset LD_PRELOAD
 	#fi
 
+	cmd="LD_PRELOAD=${_LD_PRELOAD} GLIBC_TUNABLES=${_GLIBC_TUNABLES} ${cmd}"
 	{ eval ${cmd} 2>&1 | tee -a "${out}"; echo 1 >> "${TRIGGER}"; } &
 	subproc=$!
 	bin=$(echo $2 | awk '{print $1}')
