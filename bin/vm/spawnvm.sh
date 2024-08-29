@@ -42,11 +42,9 @@ ENVS="TYPE=vm BENCHMARKS=${benchmark} PGSZ=${PGSZ}"
 if [[ ! -z "${MODE}" ]]; then
 	ENVS="${ENVS} MODE=${MODE}"
 fi
-if [[ "${PGSZ}" -eq "hpud" ]]; then
-	ENVS="${ENVS} hpud=1"
-fi
-echo "${ENVS} /host/run-scripts/run-rev-vm.sh"
-${SSHCMD} "${ENVS} /host/run-scripts/run-rev-vm.sh"
+
+echo "${ENVS} /host/scripts/${1}"
+${SSHCMD} "${ENVS} /host/scripts/${1}"
 
 ${SSHCMD} "poweroff"
 

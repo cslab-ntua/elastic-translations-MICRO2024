@@ -1,11 +1,15 @@
 #!/bin/bash
+# Wrapper to configure the environment before calling bin/run-benchmarks.sh
+# FIXME: need to document all the env variables used
 
+# FIXME: We assume that for a VM run the ET artifact repo is mounted (e.g., via
+# 9pfs) on /host
 if [[ "${TYPE}" == "vm" ]]; then
 	export BASE="/host"
 else
 	export BASE="${BASE:-/root/elastic-translations-MICRO2024}"
 fi
-
+# init env
 source "${BASE}/env/base.env"
 pushd "${BASE}"
 
@@ -15,17 +19,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Env var config for run-benchmarks.sh
 export NODE=${NODE:-0}
 export TASKSET_CORE=${TASKSET_CORE:-0}
-export MEM=${MEM:-90}
+export MEM=${MEM:-180}
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
-
 export MALLOC=${MALLOC:-tcmalloc-norelease}
-
 export BENCHMARKS="${BENCHMARKS:-submission}"
-export ITER=${ITER:-1}
+export ITER=${ITER:-3}
 
+# "extra" suffix to append to the results filename
 [ ! -z ${EXTRA} ] && export EXTRA=$EXTRA
+# debug option for pagecollect, to also print the VPNs when collecting
 [ ! -z ${PGC_DUMPVPN} ] && export PGC_DUMPVPN=$PGC_DUMPVPN
 
 export PGSZ=${PGSZ:-thp}

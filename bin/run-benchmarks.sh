@@ -1,4 +1,5 @@
 #!/bin/bash
+# FIXME: this needs review / cleanup
 # Env variable tunables:
 # - NODE: NUMA node
 # - BASE: Path 'root' folder
@@ -15,6 +16,13 @@
 # - HWK: Enable HawkEye
 # - ETHEAP: Enable ETHEAP
 # - LESHY: Enable Leshy for coverage target $LESHY
+# - MODE: Only used for Trident (FIXME: )
+# - TYPE: [host|vm]
+# - FRAG_TARGET: 0-100, target fragmetnation index (fmfi)
+# - KHUGE: enable or disable khugepaged
+# - ETONLINE: whether to run online leshy
+# - OLESHY: run the WIP Rust-based online leshy
+# - PRCTL: prctl prefix (prctl controls ET modes, hint loading, etc.)
 
 ok() {
 	echo -e "[\033[0;32mOK\033[0m] ${@}"
@@ -70,14 +78,13 @@ cleanup() {
 	check "echo 0 > /proc/sys/vm/overcommit_memory" "Restoring overcommit..."
 	unset LD_PRELOAD
 	for size in 64 $(( 2 << 10 )) $(( 32 << 10 )) $(( 1 << 20 )); do
-		#check "echo 0 > ${NODE_SYSFS}/hugepages/hugepages-${size}kB/nr_hugepages" "Releasing $size htlb-sized pages..."
 		ok "Releasing $size htlb-sized pages..."
 		echo 0 > ${NODE_SYSFS}/hugepages/hugepages-${size}kB/nr_hugepages || true
 	done
 
 	pgrep -g0 memfrag &>/dev/null && pkill -eg0 -TERM memfrag &>/dev/null
 
-	# FIXME:
+	# FIXME: this needs cleanup
 	ok "Killing spawned benchmarks..."
 	pkill -TERM -fe -g0 astar
 	pkill -TERM -fe -g0 omnetpp
@@ -267,6 +274,7 @@ if [[ ${TYPE} == "host" && "${MODE}" != "trident" ]]; then
 fi
 
 [ ! -z ${MALLOC} ] && export SUFFIX="${SUFFIX}.${MALLOC}"
+# FIXME: we only use tcmalloc-norelease atm
 case "${MALLOC}" in
 	"jemalloc")
 		export LD_PRELOAD="${BASE}/lib/jemalloc.so:${LD_PRELOAD}"
@@ -732,6 +740,7 @@ for i in $(seq $ITER); do
 	run $i benchmarks "./streamcluster 10 20 128 1000000 200000 5000 none ./output.txt 1" streamcluster submission
 done
 
+# FIXME: MULTI used to toggle multi-programmed execution, but it's not used anymore
 [ ! -z "${MULTI}" ] && sleep 36000
 
 exit 0

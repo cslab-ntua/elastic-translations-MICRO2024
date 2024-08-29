@@ -1,4 +1,5 @@
 #!/bin/bash
+# Qemu VM spawner / helper
 # Configuration via the following env variables:
 #	- HOST_THP: [never|madvise|always]
 #	- GUEST_THP: [never|madvise|always] 
@@ -8,26 +9,19 @@
 #	- HOST_HTLB_PGSIZE_KB: Host HTLB pagesize in KiB
 #	- NODE: NUMA node to use (0, 1, etc)
 # 	- CPUS: number of cores
+#   - KERNEL: kernel to use
 
 source $(dirname ${0})/scripts/common.sh
 
-# FIXME: Add support for virtualized execution in the scripts
-KERNEL="${BASE}/vm/vmlinuz-5.18.19-et"
-#KERNEL="${BASE}/vm/vmlinuz-5.18.19-tr"
-#KERNEL="${BASE}/vm/vmlinuz-5.18.19-hwk"
-
-#APPEND="console=ttyAMA0 root=/dev/vda1 earlycon transparent_hugepage=${GUEST_THP} mitigations=off no_hash_pointers ignore_loglevel movablecore=199G"
-APPEND="console=ttyAMA0 root=/dev/vda1 earlycon transparent_hugepage=${GUEST_THP} mitigations=off no_hash_pointers ignore_loglevel" #page_poison=1 page_owner=on"
+KERNEL="${BASE}/artifact-vm-bundle/kernels/vmlinuz-${KERNEL}"
+APPEND="console=ttyAMA0 root=/dev/vda1 earlycon transparent_hugepage=${GUEST_THP} mitigations=off no_hash_pointers ignore_loglevel"
 
 QEMU="${BASE}/bin/vm/qemu-system-aarch64"
-
-# FIXME: Add support for virtualized execution in the scripts
-IMAGE="${BASE}/vm/jammy-vm.qcow2"
-CLOUD_INIT="${BASE}/vm/cloud-init.img"
+IMAGE="${BASE}/artifact-vm-bundle/artifact.img"
 
 NODE="${NODE:-0}"
 CPUS="${CPUS:-60}"
-MEM_GB="${MEM_GB:-230}"
+MEM_GB="${MEM_GB:-200}"
 
 if [[ -n ${GUEST_HTLB_PGSIZE_KB} ]]; then
 	NR_GUEST_HTLB_PAGES=$(( (${GUEST_HTLB_MEM_GB} << 20) / ${GUEST_HTLB_PGSIZE_KB} ))
@@ -49,17 +43,14 @@ if [[ -n ${HOST_THP} ]]; then
 	echo "${HOST_THP}" > /sys/kernel/mm/transparent_hugepage/enabled
 fi
 
-# -serial mon:unix:/tmp/serial.sock,server=on,wait=off
 pushd "${BASE}/bin" &>/dev/null
-exec numactl -N${NODE} -m${NODE} -- ${QEMU} -enable-kvm -M virt \
-	-cpu host -smp ${CPUS} -m ${MEM_GB}g -nographic \
-	-serial mon:stdio \
-	-qmp unix:/tmp/qmp-sock,server=on,wait=off \
-	-drive file=${IMAGE},if=virtio,format=qcow2,cache=none \
-	-nic user,hostfwd=tcp:127.0.0.1:65433-:22,model=virtio \
-	-virtfs local,path=${BASE},mount_tag=host,security_model=none \
-	-kernel ${KERNEL} -append "${APPEND}" \
-	-numa node,nodeid=0,memdev=mem \
+exec numactl -N${NODE} -m${NODE} -- ${QEMU} -nographic -enable-kvm -M virt \
+	-cpu host -smp ${CPUS} -m ${MEM_GB}g -numa node,nodeid=0,memdev=mem \
 	-object ${MEMBACKEND},id=mem,size=${MEM_GB}G,share=off,merge=off,dump=off,prealloc=off \
-	-drive file=${CLOUD_INIT},format=raw,if=virtio,cache=none \
-	-device vhost-vsock-pci,guest-cid=9999
+	-serial mon:stdio -qmp unix:/tmp/qmp-sock,server=on,wait=off \
+	-drive file=${IMAGE},if=virtio,format=qcow2,cache=none \
+	-virtfs local,path=${BASE},mount_tag=host,security_model=none \
+	-nic user,hostfwd=tcp:127.0.0.1:65433-:22,model=virtio \
+	-kernel ${KERNEL} -append "${APPEND}" \
+	-device virtio-rng-pci -device vhost-vsock-pci,guest-cid=9999 \
+	"${@}" # user-provided args
