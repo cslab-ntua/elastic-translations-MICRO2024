@@ -655,7 +655,7 @@ done
 
 for i in $(seq $ITER); do
 	DATA_PREFIX=.
-	[ ${TYPE} == "vm" ] && DATA_PREFIX=/root
+	#[ ${TYPE} == "vm" ] && DATA_PREFIX=/root
 	run $i benchmarks "./train ${DATA_PREFIX}/kdd12" svm submission
 done
 
@@ -671,7 +671,7 @@ done
 for i in $(seq $ITER); do
 	#run $i benchmarks "./XSBench -s XL -t 32 -l 170" xsbench submission
 	#run $i benchmarks "./XSBench -s XL -t 1 -l 450" xsbench submission
-	run $i benchmarks "./XSBenc2 -s XL -t 1 -l 128" xsbench submission
+	run $i benchmarks "./XSBench -s XL -t 1 -l 128" xsbench submission
 done
 
 for i in $(seq $ITER); do
@@ -719,7 +719,7 @@ export PREFIX="${NUMA_PREFIX} ${TASKSET_PREFIX} ${PERF_PREFIX} ${PRCTL}"
 
 for i in $(seq $ITER); do
 	DATA_PREFIX=.
-	[ ${TYPE} == "vm" ] && DATA_PREFIX=/root
+	#[ ${TYPE} == "vm" ] && DATA_PREFIX=/root
 	run $i benchmarks "./canneal 1 15000 2000 ${DATA_PREFIX}/canneal.inp 6000" canneal submission
 done
 
