@@ -559,7 +559,7 @@ run() {
 	#	unset LD_PRELOAD
 	#fi
 
-	{ eval ${cmd} 2>&1 | tee -a "${out}"; } &
+	{ eval ${cmd} 2>&1 | tee -a "${out}"; echo 1 >> "${TRIGGER}" } &
 	subproc=$!
 	bin=$(echo $2 | awk '{print $1}')
 	check "sleep 10" "Waiting for ${bin} to spawn..."
