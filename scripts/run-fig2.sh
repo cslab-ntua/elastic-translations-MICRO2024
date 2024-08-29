@@ -5,7 +5,12 @@
 set -o pipefail -o errexit
 
 # init env
-export BASE="${BASE:-/root/elastic-translations-MICRO2024}"
+# This script will get called again inside the VM, to actually call run.sh
+if [ "${TYPE}" == "vm" ]; then
+	export BASE="/host"
+else
+	export BASE="${BASE:-/root/elastic-translations-MICRO2024}"
+fi
 source "${BASE}/env/base.env"
 pushd "${BASE}"
 
@@ -25,6 +30,11 @@ export RESULTS="fig2"
 # Do 3 iterations per benchmark / scenario
 export ITER=1
 
+if [ "${TYPE}" == "vm" ]; then
+	run.sh
+	exit 0
+fi
+
 sizes="pte hptec thp hpmd hpmdc hpud"
 for sz in ${sizes}; do
 	# PGSZ defines the requested translation (page) size to use, see bin/run.sh for
@@ -33,8 +43,9 @@ for sz in ${sizes}; do
 
 	# run.sh is the main bash script which drives the artifact evaluation. It's
 	# configured via environmental varibles, documented in run.sh
-	run.sh # native run
+	#run.sh # native run
+
+	# We use a separate script for the virtualized results
+	$(dirname ${0})/run-fig2-vm.sh
 done
 
-# We use a separate script for the virtualized results
-$(dirname ${0})/run-fig2-vm.sh

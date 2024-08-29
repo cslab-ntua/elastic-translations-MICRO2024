@@ -11,7 +11,7 @@
 # 	- CPUS: number of cores
 #   - KERNEL: kernel to use
 
-source $(dirname ${0})/scripts/common.sh
+source $(dirname $(dirname $(dirname ${0})))/scripts/common.sh
 
 KERNEL="${BASE}/artifact-vm-bundle/kernels/vmlinuz-${KERNEL}"
 APPEND="console=ttyAMA0 root=/dev/vda1 earlycon transparent_hugepage=${GUEST_THP} mitigations=off no_hash_pointers ignore_loglevel"
@@ -47,7 +47,8 @@ pushd "${BASE}/bin" &>/dev/null
 exec numactl -N${NODE} -m${NODE} -- ${QEMU} -nographic -enable-kvm -M virt \
 	-cpu host -smp ${CPUS} -m ${MEM_GB}g -numa node,nodeid=0,memdev=mem \
 	-object ${MEMBACKEND},id=mem,size=${MEM_GB}G,share=off,merge=off,dump=off,prealloc=off \
-	-serial mon:stdio -qmp unix:/tmp/qmp-sock,server=on,wait=off \
+	-serial mon:unix:${BASE}/artifact-vm-bundle/serial.sock,server=on,wait=off \
+	-qmp unix:${BASE}/artifact-vm-bundle/qmp.sock,server=on,wait=off \
 	-drive file=${IMAGE},if=virtio,format=qcow2,cache=none \
 	-virtfs local,path=${BASE},mount_tag=host,security_model=none \
 	-nic user,hostfwd=tcp:127.0.0.1:65433-:22,model=virtio \

@@ -26,14 +26,6 @@ check() {
 	eval ${cmd} && ok "${msg}" || fail "${fmsg}"
 }
 
-# This script will get called again inside the VM, to actually call run.sh
-if [ "${TYPE}" == "vm" ]; then
-	export BASE="/host"
-	source "${BASE}/env/base.env"
-	run.sh
-	exit 0
-fi
-
 # These are normally set by run.sh for the native results, so make sure we use
 # tcmalloc for Qemu / host as well
 export LD_PRELOAD="${BASE}/lib/libtcmalloc_minimal.so:${LD_PRELOAD}"
@@ -94,7 +86,7 @@ for benchmark in ${BENCHMARKS}; do
 			;;
 	esac
 
-	KERNEL="5.18.19-et" spawnvm.sh "$(basename ${0})"
+	KERNEL="5.18.19-et" spawnvm.sh run-fig2.sh
 done
 
 exit 0
