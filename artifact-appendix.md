@@ -106,7 +106,7 @@ especially in the case TLB size differs.
     newly-developed code) and other free software and open source
     licenses used by projects included in the artifact
 
--   **Archived (provide DOI)?:** [10.5281/zenodo.13327364](https://zenodo.org/doi/10.5281/zenodo.13327363)
+-   **Archived (provide DOI)?:** [10.5281/zenodo.13621499](https://doi.org/10.5281/zenodo.13621499)
 
 ## Description
 

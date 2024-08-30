@@ -1,13 +1,12 @@
 Elastic Translations MICRO'24 Artifact
 ======================================
 
-[![DOI](https://zenodo.org/badge/836329268.svg)](https://zenodo.org/doi/10.5281/zenodo.13327363)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13621499.svg)](https://doi.org/10.5281/zenodo.13621499)
 
 This repository contains scripts and other supplementary material for the artifact evaluation of the paper 
-**Elastic Translations: Fast virtual memory with multiple translation sizes** (link TBD)
+**Elastic Translations: Fast virtual memory with multiple translation sizes** (DOI link TBD).
 
-The README mostly mirrors the information provided in the artifact appendix
-included in the paper (PDF link TBD).
+ET extend Linux to optimally and transparently take advantage of ARMv8-A's OS-assisted TLB coalesecing. ET transparently supports 64KiB and 32MiB translations, both at fault time and via asynchronous *khugepaged* migrations. The *Leshy* userspace profiler, based on ARMv8-A's Statistical Profiling Extension (SPE), samples the TLB misses of applications, either at runtime or offline, and provides translation size guidance to the kernel. We plan to add RISC-V Svnapot support to ET in the future.
 
 Authors
 -------
@@ -20,6 +19,10 @@ Authors
  * Konstantinos Nikas (National Technical University of Athens)
  * Georgios Goumas (National Technical University of Athens)
  * Nectarios Koziris (National Technical University of Athens)
+
+Paper Citation
+--------------
+TBD
 
 Directory Structure
 -------------------
@@ -51,9 +54,5 @@ Software Dependencies
 For our evaluation, we used Ubuntu Jammy (22.04) for both native and
 virtualized execution. We list and install the required packages for building
 and running the artifact in `scripts/prepare.sh`.
-
-Paper Citation
---------------
-TBD
 
 For more information see the [artifact appendix](artifact-appendix.md).
