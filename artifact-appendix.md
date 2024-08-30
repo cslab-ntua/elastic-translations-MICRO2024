@@ -13,7 +13,6 @@
         results](#evaluation-and-expected-results)
     -   [Experiment customization](#experiment-customization)
     -   [Methodology](#methodology)
-    -   [Notes](#notes)
 
 # Artifact Appendix
 
@@ -60,9 +59,10 @@ Using the scripts provided in the parent repo, one can prepare
 (*scripts/prepare.sh*) the host for building, running and evaluating ET.
 *scripts/build.sh* builds the *ET, Hawkeye, mTHP* kernels as well as the
 userspace utilities and benchmarks. The built artifacts are installed
-via *scripts/install.sh*. Finally, *scripts/run.sh* configures the host
-and runs the user-selected benchmarks. The results of these runs can be
-summarized by *scripts/report.sh*.
+via *scripts/install.sh*. Finally, we provide run scripts under *scripts/run*.sh*,
+which configure the host and run the user-selected benchmarks and scenarios.
+We intend to also provide in the future reporting scripts to summarize and possibly plot
+the results generated from the above-mentioned run scripts.
 
 For the evaluation, an *ARMv8.2+-A* server is required. The
 paper-reported results were obtained on an *Ampere Altra Mt.Jade*
@@ -132,14 +132,18 @@ root repo, run:
 	# bash run-vm.sh
 
 This should spawn the QEMU VM. You can then access it either via the QEMU
-console, using the credentials ubunut / ubuntu, or by SSHing to the VM:
+console, using the credentials ubuntu / ubuntu, or by SSHing to the VM:
 	
 	# ssh -p65433 ubuntu@localhost
 
 using the same credentials.
 
-You can also use the `run-vm-noefi.sh` script, for booting pre-built VM kernels
+The artifact bundle also includes an ED2551 SSH key pair. The public key is already installed
+in the artifact bundle img (*artifact.img*) for both root and ubuntu users.
+
+Finally, you can also use the `run-vm-noefi.sh` script, for booting pre-built VM kernels
 directly from the host, without booting to GRUB.
+The artifact bundle includes some precompiled VM kernels under *kernels/*.
 
 ### Hardware dependencies
 
@@ -208,12 +212,37 @@ For the evaluation, one would generally:
 -   use or modify any of the *run scripts (scripts/run\*.sh)* (TBA) to
     run the experiment,
 
--   analyze, parse and plot the results under *results/*
+-   analyze, parse and plot the results under *results/{host, vm}* and possibly plot them
     (scripts/plot\*.sh TBA).
 
 ## Evaluation and expected results
 
-TBD
+For the evaluation, the artifact includes several *run scripts*:
+
+- *scripts/run-test.sh* is a minimal script to test that ET works. By tweaking the variables (which are read by *bin/run.sh*, *bin/run-benchmarks.sh*, *bin/prctl.sh*, *bin/frag.sh* and the env scripts under *env/*), one can do ET and non-ET runs with various configurations.
+
+- *scripts/run-fig2-hugetlb.sh* is used to reproduce the 64KiB and 32MiB intermediage translation performance via HugeTLB (Figure 2 in the paper). The script can be tweaked to change the workloads that should be run (*BENCHMARKS*), the number of iteration for each workload (*ITER*) and the translation sizes to evaluate (*sizes*). The script will perform both native and virtualized runs, but either can be commented out / skipped, if need be.
+
+- *scripts/run-fig15-pflat.sh* is used to reproduce the fault latency CDF of Fig. 15. This requires a pftrace-enabled kernel (CONFIG_PFTRACE). Note that for the 64KiB and 32MiB non-ET fault latencies, different kernels are required, compiled with the *CONFIG_ARM64_64K_PAGES* and *CONFIG_ARM64_16K_PAGES* options set respectively.
+
+- *scripts/run-fig14-multi.sh* will run the three workload mixes from Fig. 14. The *RUN* env variable controls whether to do a *baseline* or an *et* run. The script can be tweaked to omit or add mixes and workloads.
+
+- *scripts/run-fig10-virt.sh* is used to reproduce the virtualized execution results of Fig. 10.  The *RUN* env variable controls whether to do a *baseline*, an *et* or a *hwk* run. Similarly to the other scripts, the workloads (*BENCHMARKS*), iterations (*ITER*), and other options can be tweaked as needed.
+
+- *scripts/run-eval-base.sh* is the bulkiest script, which can be used to reproduce the results from figures 8, 11, 12, and 13 of the paper. Specifically, using the *RUN* variable one can select between:
+  * baseline:  THP
+  * mTHP: requires 6.8/6.9-rc mTHP kernel
+  * et: requires 5.18.19-et kernel
+  * hawkeye: requires 5.18.19-hwk kernel
+  * trident: requires 4.17.x-tr kernel
+
+  The runs can be tweaked to generate the results for
+  * Fig. 8: native, unset FRAG_TARGET
+  * Fig. 11: native, FRAG_TARGET=50, FRAG_TARGET=99
+  * Fig. 12: native, RUN=et, select between the various provided scenarios in the script
+  * Fig. 13: native, RUN=et, ACCESSBIT=1
+
+  Documenting and testing *scripts/run-eval-base.sh* is still a Work-in-Progress.
 
 ## Experiment customization
 
@@ -297,5 +326,3 @@ functionality is implemented in the *bin/epochs.sh* script (which we are
 in the progress of migrating to Rust and include a [WIP
 version](https://github.com/cslab-ntua/etutils-rs/blob/451a6eb7c9087c548a22debb586a15788ea4ed71/src/online_leshy.rs)
 in the *etutils-rs* repo).
-
-## Notes

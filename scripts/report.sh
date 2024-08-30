@@ -1,6 +1,7 @@
 #!/bin/bash
 # 
 # Plot the results to generate the paper figures
+# FIXME: !
 
 set -o pipefail -o errexit
 

@@ -52,18 +52,8 @@ For our evaluation, we used Ubuntu Jammy (22.04) for both native and
 virtualized execution. We list and install the required packages for building
 and running the artifact in `scripts/prepare.sh`.
 
-Installation
-------------
-TBD
-
-Configuration
--------------
-TBD
-
-Running the Experiments
------------------------
-TBD
-
 Paper Citation
 --------------
 TBD
+
+For more information see the [artifact appendix](artifact-appendix.md).

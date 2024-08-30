@@ -7,6 +7,10 @@ set -o pipefail -o errexit
 source "$(dirname ${0})/common.sh"
 
 install_kernel() {
+	if [[ "${TYPE}" == "vm" ]]; then
+		fail "Please run scripts/install.sh inside the VM or manually copy / install the VM kernel"
+	fi
+
 	if [[ "${KERNEL}" == "mthp" ]]; then
 		pushd src/linux-mthp
 		ok "Installing 6.8rc-mthp kernel..."
@@ -25,7 +29,7 @@ install_kernel() {
 
 	ok "Configuring GRUB..."
 	cat <<EOF >/etc/default/grub.d/99-artifact.cfg
-GRUB_CMDLINE_LINUX="console=ttyAMA0 console=ttyS1 earlycon mitigations=off earlyprintk=serial no_hash_pointers ignore_loglevel"
+GRUB_CMDLINE_LINUX="console=ttyAMA0 console=ttyS1 console=tty1 earlycon mitigations=off earlyprintk=serial no_hash_pointers ignore_loglevel"
 GRUB_TIMEOUT=5
 GRUB_TIMEOUT_STYLE=menu
 GRUB_TERMINAL=console

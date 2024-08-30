@@ -86,7 +86,7 @@ for benchmark in ${BENCHMARKS}; do
 			;;
 	esac
 
-	KERNEL="5.18.19-et" spawnvm.sh run-fig2.sh
+	KERNEL="5.18.19-et" spawnvm.sh run-fig2-hugetlb.sh
 done
 
 exit 0

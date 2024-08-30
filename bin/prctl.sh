@@ -102,6 +102,15 @@ elif [ ! -z "${HWK}" ]; then
 elif [ ! -z "${ETHEAP}" ]; then
 	source ${BASE}/env/coala.env
 	source ${BASE}/env/et.env
+	case ${cmd} in
+		astar|omnetpp|streamcluster)
+			if [ ! -z "${PRCTL_THP}" ]; then
+				echo "Disabling THP..."
+				echo never > /sys/kernel/mm/transparent_hugepage/enabled
+			fi
+			;;
+	esac
+	echo "Enabling greedy ET..."
 	prctl --ca --et -- "${@}"
 elif [ ! -z "${TRIDENT}" ]; then
 	export CONFIG="TRIDENT"

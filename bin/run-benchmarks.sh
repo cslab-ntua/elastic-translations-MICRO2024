@@ -395,6 +395,56 @@ wait_frag() {
 	done
 }
 
+stats_interval() {
+		benchmark=$1
+		shift
+
+		out=$1
+		shift
+
+		pid=$1
+		shift
+
+        case $benchmark in
+                "astar")
+                        export SLEEP=30
+                        ;;
+                "omnetpp")
+                        export SLEEP=60
+                        ;;
+                "svm")
+                        export SLEEP=240
+                        ;;
+                "streamcluster")
+                        export SLEEP=120
+                        ;;
+                "canneal")
+                        export SLEEP=480
+                        ;;
+                "hashjoin")
+                        export SLEEP=90
+                        ;;
+                "bfs")
+                        export SLEEP=60
+                        ;;
+                "xsbench")
+                        export SLEEP=90
+                        ;;
+                "btree")
+                        export SLEEP=240
+                        ;;
+                "gups")
+                        export SLEEP=120
+                        ;;
+        esac
+
+		sleep $SLEEP
+		while [ -d "/proc/${pid}" ]; do
+			stats ${out} ${pid}
+			sleep $SLEEP
+		done
+}
+
 stats() {
 	out=$1
 	shift
@@ -402,7 +452,7 @@ stats() {
 	pid=$1
 	shift
 
-	if [[ ! -z "${pid}" ]]; then
+	if [[ ! -z "${pid}" && -d "/proc/${pid}" ]]; then
 		ok "Running pagecollect..."
 		pagecollect "${pid}" &>> "${out}"
 		echo "pid stats: " &>> "${out}"
@@ -486,7 +536,7 @@ run() {
 		fi
 	fi
 
-	ok "Running ${benchmark}, iteration ${iter}..."
+	ok "Running ${benchmark}, iteration ${iter}/${ITER}..."
 
 	if [[ -z "${MULTI}" && $(pgrep -cf "./run.sh") -eq 1 ]]; then 
 		check "echo 3 > /proc/sys/vm/drop_caches" "Dropping caches..."
@@ -589,7 +639,11 @@ run() {
 		oleshy ${pid} &
 	fi
 
+	stats_interval ${benchmark} ${out} ${pid} &
+	stats_pid=$!
 	check "inotifywait -qq -e modify ${TRIGGER}" "Waiting for trigger..."
+	ok "Killing periodic stats job..."
+	{ kill $stats_pid && wait $stats_pid; } 2>/dev/null
 	ok "Killing leshy..."
 	pkill -TERM -eg0 epochs || true
 	ok "Taking snapshot..."
