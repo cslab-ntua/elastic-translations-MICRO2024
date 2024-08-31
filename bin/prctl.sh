@@ -74,7 +74,7 @@ if [ ! -z "${LESHY}" ]; then
 	source ${BASE}/env/coala.env
 	source ${BASE}/env/et.env
 
-	hints_prefix="${BASE}/traces/${HINTS:-leshy}/${TARGET}/${BENCHMARK}"
+	hints_prefix="${BASE}/hints/${BENCHMARK}"
 
 	if [ ! -z "${NOET}" ]; then
 		if [ ! -z "${ACCESSBIT}" ]; then

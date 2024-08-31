@@ -39,10 +39,13 @@ source "${BASE}/env/base.env"
 pushd "${BASE}"
 
 # Define the workloads to run
-export BENCHMARKS="astar omnetpp streamcluster hashjoin svm canneal xsbench bfs gups btree"
+[ -z "${BENCHMARKS}" ] && export BENCHMARKS="astar omnetpp streamcluster hashjoin svm canneal xsbench bfs gups btree"
 
-# Set these to match the desired FMFI (0-100)
-unset FRAG_TARGET
+# Set these to match the desired FMFI (0, 50, 75, 99)
+[ -z "${FRAG_TARGET}" ] && export FRAG_TARGET=50
+if [[ "${FRAG_TARGET}" -eq 0 ]]; then
+	unset FRAG_TARGET
+fi
 
 # Directory where results will be stored -- it's prefixed by
 # $(pwd)/results/host for native and $(pwd)/results/native for virtualized
@@ -75,9 +78,14 @@ export HWK_FALLBACK=0 # whether to fallback to normal khugepaged scanning when H
 
 case "${RUN}" in
 	"baseline")
-		# Baseline (THP)
+		# Baseline (4K)
 		# Kernel Requirement: 5.18.19-vanilla (or -et)
-		run.sh # THP
+		PGSZ=pte run.sh
+		;;
+	"thp")
+		# THP
+		# Kernel Requirement: 5.18.19-vanilla (or -et)
+		run.sh
 		;;
 	"mthp")
 		# mTHP

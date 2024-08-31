@@ -639,11 +639,15 @@ run() {
 		oleshy ${pid} &
 	fi
 
-	stats_interval ${benchmark} ${out} ${pid} &
-	stats_pid=$!
+	if [[ "${benchmark}" == "astar" || "${benchmark}" == "omnetpp" ]]; then
+		stats_interval ${benchmark} ${out} ${pid} &
+		stats_pid=$!
+	fi
 	check "inotifywait -qq -e modify ${TRIGGER}" "Waiting for trigger..."
-	ok "Killing periodic stats job..."
-	{ kill $stats_pid && wait $stats_pid; } 2>/dev/null
+	if [[ "${benchmark}" == "astar" || "${benchmark}" == "omnetpp" ]]; then
+		ok "Killing periodic stats job..."
+		{ kill $stats_pid && wait $stats_pid; } 2>/dev/null
+	fi
 	ok "Killing leshy..."
 	pkill -TERM -eg0 epochs || true
 	ok "Taking snapshot..."

@@ -13,6 +13,7 @@
         results](#evaluation-and-expected-results)
     -   [Experiment customization](#experiment-customization)
     -   [Methodology](#methodology)
+    -   [Troubleshooting](#troubleshooting)
 
 # Artifact Appendix
 
@@ -271,7 +272,7 @@ For the evaluation metrics, we use the architectural HW perf events
 (AVMv8 PMUv3), which include *cycles, TLB misses, wall-clock time and
 page faults*. ARMv8/9-A has recently added support for page walk cycles
 tracing (ARMv9.1-A). We intend to extend our evaluation harness to also
-support these events, which could enhance the accuracy of the address
+support these events, which could enhancethe accuracy of the address
 translation overhead measurements. With the exception of SPEC CPU
 workloads (which are wrapped and run via the Linux *perf* userspace
 tool), we opt to use *libperf* to enable and disable perf event tracing
@@ -326,3 +327,8 @@ functionality is implemented in the *bin/epochs.sh* script (which we are
 in the progress of migrating to Rust and include a [WIP
 version](https://github.com/cslab-ntua/etutils-rs/blob/451a6eb7c9087c548a22debb586a15788ea4ed71/src/online_leshy.rs)
 in the *etutils-rs* repo).
+
+## Troubleshooting
+
+FIXME: describe how one could verify that the various ET components work as
+intended, the ET online Leshy logs and traces, etc.

@@ -52,8 +52,7 @@ profile() {
 	fi
 
 	# FIXME: configurable slacks per benchmark?
-	leshyv3 "${outdir}/${benchmark}.epoch.${snapshot}" \
-		"${outdir}/${benchmark}.hints.${snapshot}.full" 100000 70
+	leshy "${outdir}/${benchmark}.epoch.${snapshot}" "${outdir}/${benchmark}.hints.${snapshot}.full" 100000 70
 
 	if [[ ! -s "${outdir}/${benchmark}.hints.${snapshot}.full" ]]; then
 		echo "hints empty, skipping..."
