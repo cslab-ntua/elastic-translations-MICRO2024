@@ -330,5 +330,54 @@ in the *etutils-rs* repo).
 
 ## Troubleshooting
 
-FIXME: describe how one could verify that the various ET components work as
-intended, the ET online Leshy logs and traces, etc.
+The artifact includes several tools which assist with troubleshooting and
+debugging while running the artifact or evaluating ET in general. These tools
+include:
+
+ - *bin/status.sh*: show the current configuration of the host (THP, khugepaged, ET, HugeTLB)
+ - *bin/clear_htlb.sh*: Release any reserved HugeTLB pages
+ - *bin/fmfi.py*: Show the current FMFI (Free Memory Fragmentation Index)
+ - *bin/pagecollect*: Show the translation size distribution for a process
+ - *bin/thpmaps*: Upstream mTHP tool backported from 6.x (similar to pagecollect but targetting mTHP)
+
+*bin/run-benchmarks.sh* will also output the initial host configuration as well
+as various statistics during execuction under the configured results
+directory (e.g., *${BASE}/results/host/fig8/*).
+
+For each benchmark and configuration, *bin/run-benchmarks.sh* will create a
+directory, which reflects the configuration used for the run, in the format 
+${benchmark}.${base_page_size}.${PGSZ}.${MALLOC}.${MODE}.{EXTRA_CONF}, e.g. 
+`hashjoin.4KB.thp.tcmalloc-norelease.etonline.nokcompactd.1000ms`
+
+Inside this directory, there will be a *config* file, which captures the host
+configuration at startup. 
+
+For each iteration, there will be a file, named by the iteration number (e.g.,
+*1*), which will include various performance stats and host configuration
+information at the start, (for some benchmarks also during the execution and at
+the end of the run. This file will also include the final performance counters
+snapshot (cycles, TLB misses, etc.) for the run, which we use for evaluation as
+well as the distribution of translation sizes, collected via *pagecollect*.
+
+For the *etonline* runs, the online Leshy profiler will also log its stdout
+under *${iter}.leshy.out* and will save the collected TLB misses and the
+generated hints, based on those misses, under *${iter}.traces*.
+
+ET also expose a directory under proc, */proc/coalapaging/*, which provides
+various debugging statistics (currently documented only in the ET Linux kernel
+source code).
+
+Additionally, each process has three more ET-related entries under */proc/PID/*.
+*/proc/PID/coalapging* and */proc/PID/et* can be used to determine whether
+CoalaPaging and the ET (the transparent contig-bit management) have been
+enabled for a process. */proc/PID/coala\_hints* show the loaded Leshy hints, if
+any.
+
+To manually enable or disable CoalaPaginag and ET, and load Leshy hints to the
+kernel, please consult the prctl source code under *src/etutils-rs*, which
+provides an example of how to use the ET *process\_madvise()* interface.
+
+To get debug logs from the ET kernel, you have to enable the
+*CONFIG\_DEBUG\_COALAPAGING* and *CONFIG\_DEBUG_ET*. We use *pr\_debug()* for
+debug logs. Please consult *env/dyndbg.env* on how to properly configure Linux
+dynamic debug, in order to enable *pr\_debug()* for various components.
