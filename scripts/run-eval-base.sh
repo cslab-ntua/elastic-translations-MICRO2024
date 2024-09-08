@@ -39,10 +39,10 @@ source "${BASE}/env/base.env"
 pushd "${BASE}"
 
 # Define the workloads to run
-[ -z "${BENCHMARKS}" ] && export BENCHMARKS="astar omnetpp streamcluster hashjoin svm canneal xsbench bfs gups btree"
+export BENCHMARKS="${BENCHMARKS:-astar omnetpp streamcluster hashjoin svm canneal xsbench bfs gups btree}"
 
 # Set these to match the desired FMFI (0, 50, 75, 99)
-[ -z "${FRAG_TARGET}" ] && export FRAG_TARGET=50
+export FRAG_TARGET=${FRAG_TARGET:-50}
 if [[ "${FRAG_TARGET}" -eq 0 ]]; then
 	unset FRAG_TARGET
 fi
@@ -50,14 +50,14 @@ fi
 # Directory where results will be stored -- it's prefixed by
 # $(pwd)/results/host for native and $(pwd)/results/native for virtualized
 # execution
-export RESULTS="eval/frag${FRAG_TARGET:-0}"
+export RESULTS="${RESULTS:-eval}/frag${FRAG_TARGET:-0}"
 
 # Do 3 iterations per benchmark / scenario
 # FIXME: Set to 1 for now to finalize the scripts
-export ITER=1
+export ITER=${ITER:-1}
 
 # Use THP baseline config
-export PGSZ=thp
+export PGSZ=${PGSZ:-thp}
 
 # Disable verbose kernel logging (pr_debug()) for ET by default. Set these to
 # enable it. It requires the DEBUG_COALAPAGING / DEBUG_ET kernel config options
@@ -103,7 +103,7 @@ case "${RUN}" in
 		# online == bin/epochs.sh, run by bin/run.sh
 		# profiling interval defined in bin/run.sh
 		# slack + target defined by bin/epochs.sh when spwaning leshyv3 to generate hints
-		UNHINTED_FAULTS=1 MODE="etonline" run.sh
+		#UNHINTED_FAULTS=1 MODE="etonline" run.sh
 
 		# (optional) ET with vanilla THP + khugepaged during init phase
 		#UNHINTED_FAULTS=1 MODE="etonline" COALA_KHUGE=1 EXTRA=".init-2m" run.sh
@@ -119,7 +119,7 @@ case "${RUN}" in
 		MODE="leshy" run.sh
 
 		# Offline Leshy with fault-time hinting and accessbit-based hints
-		MODE="leshy" ACCESSBIT=1 run.sh
+		#MODE="leshy" ACCESSBIT=1 run.sh
 
 		# Offline Leshy without using 32MiB translations
 		#MODE="leshy-thp" run.sh
