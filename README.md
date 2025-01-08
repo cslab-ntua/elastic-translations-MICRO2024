@@ -32,7 +32,7 @@ Directory Structure
  * `env/` Bash scripts to configure the environment for the experiments
  * `hints/` Precomputed Leshy hints for the benchmarks, for both TLB miss sampling and accessbit sampling traces
  * `lib/` Libraries needed to run the experiments (gperftools tcmalloc, mpich)
- * `scripts/` Artifact bash scripts to prepare the host and build, install and run the artifact
+ * `scripts/` Artifact bash scripts to prepare the host and build, install and run the artifact, summarize and plot the results
  * `src/` Source code for the ET kernel, the ET userspace tools and utilities and the benchmarks.
 
 Hardware Dependencies
